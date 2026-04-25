@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bench Plans — small softwood table</title>
+<style>
+  :root {
+    --paper: #f4f1e8;
+    --ink: #1a1a1a;
+    --blueprint: #1e4d7b;
+    --blueprintLine: #3a6b9b;
+    --rule: rgba(26,26,26,0.2);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, "Iowan Old Style", serif;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 16px;
+    min-height: 100vh;
+  }
+  .mono { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+  header {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+  }
+  header .sub {
+    font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.6;
+  }
+  header h1 { font-size: 32px; margin: 4px 0 0; font-weight: 700; letter-spacing: -0.01em; }
+  header h1 .it { font-style: italic; font-weight: 400; }
+  header .meta { font-size: 11px; text-align: right; line-height: 1.6; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .panel.body { padding: 14px 16px 18px; }
+  .panel-h {
+    font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    margin: 0 0 8px; font-weight: 700; font-family: "JetBrains Mono", monospace;
+    border-bottom: 1px solid var(--ink); padding-bottom: 6px;
+  }
+  .row {
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px dashed rgba(26,26,26,0.2);
+  }
+  .row label {
+    font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .row .controls { display: flex; align-items: center; gap: 6px; }
+  .row input[type="number"] {
+    width: 64px; padding: 6px 8px; border: 1px solid var(--ink);
+    background: var(--paper); font-family: "JetBrains Mono", monospace;
+    font-size: 13px; text-align: right; color: var(--ink);
+  }
+  .btn-sm {
+    width: 24px; height: 24px; border: 1px solid var(--ink); background: var(--paper);
+    cursor: pointer; font-family: "JetBrains Mono", monospace; font-size: 14px;
+    color: var(--ink); line-height: 1; padding: 0;
+  }
+  .unit { font-size: 11px; opacity: 0.6; font-family: "JetBrains Mono", monospace; margin-left: 4px; }
+
+  .btn {
+    background: var(--ink); color: var(--paper); border: 1.5px solid var(--ink);
+    padding: 8px 14px; cursor: pointer;
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600;
+  }
+  .btn.ghost { background: var(--paper); color: var(--ink); }
+
+  .viewers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 760px) {
+    .viewers { grid-template-columns: 1fr; }
+  }
+  .viewer {
+    border: 1.5px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    background: var(--paper);
+    overflow: hidden;
+  }
+  .viewer-h {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ink);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .viewer-h .num { color: var(--blueprint); }
+  .viewer-stage { position: relative; height: 360px; }
+  .viewer-stage canvas { display: block; }
+  .hint {
+    position: absolute; left: 10px; bottom: 8px;
+    font-family: "JetBrains Mono", monospace; font-size: 9px;
+    background: rgba(244,241,232,0.85); padding: 3px 7px;
+    border: 1px solid rgba(26,26,26,0.4);
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .dim-overlay {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+  .dim-overlay svg { width: 100%; height: 100%; display: block; }
+
+  .tabs { display: flex; margin-top: 14px; }
+  .tab {
+    padding: 10px 16px; border: 1.5px solid var(--ink);
+    border-right: none; background: rgba(26,26,26,0.06);
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600;
+    cursor: pointer; color: var(--ink); position: relative;
+  }
+  .tab:last-of-type { border-right: 1.5px solid var(--ink); }
+  .tab.active { background: var(--paper); border-bottom-color: var(--paper); z-index: 2; }
+  .tab-spacer { flex: 1; border-bottom: 1.5px solid var(--ink); }
+
+  .tab-body {
+    border: 1.5px solid var(--ink); border-top: none;
+    background: var(--paper); box-shadow: 4px 4px 0 var(--ink);
+    padding: 16px; margin-top: -1px;
+  }
+
+  table.cuts {
+    width: 100%; border-collapse: collapse;
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+  }
+  table.cuts thead tr { border-bottom: 2px solid var(--ink); text-align: left; }
+  table.cuts th {
+    padding: 8px 10px; font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  table.cuts tbody tr { border-bottom: 1px dashed rgba(26,26,26,0.2); }
+  table.cuts td { padding: 8px 10px; vertical-align: top; }
+  table.cuts td.num { text-align: right; white-space: nowrap; }
+  table.cuts td.serif { font-family: Georgia, serif; font-size: 13px; }
+  table.cuts td.note { font-family: Georgia, serif; font-size: 12px; font-style: italic; opacity: 0.85; }
+
+  ol.steps { padding-left: 0; margin: 0; list-style: none; }
+  ol.steps li {
+    display: grid; grid-template-columns: 44px 1fr; gap: 14px;
+    padding: 12px 0; border-bottom: 1px dashed rgba(26,26,26,0.2);
+  }
+  ol.steps li:last-child { border-bottom: none; }
+  ol.steps .n {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 22px; font-weight: 700; color: var(--blueprint); line-height: 1;
+    padding-top: 2px;
+  }
+  ol.steps .t { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
+  ol.steps .d { font-size: 13px; line-height: 1.55; opacity: 0.85; }
+
+  .footer-note {
+    font-size: 11px; opacity: 0.6; margin-top: 14px; font-style: italic;
+  }
+
+  .actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+  /* print */
+  @media print {
+    body { padding: 0; background: white; }
+    .no-print { display: none !important; }
+    .panel, .viewer, .tab-body { box-shadow: none; }
+    .grid { grid-template-columns: 1fr; }
+    .viewers { grid-template-columns: 1fr 1fr; }
+    .viewer-stage { height: 280px; }
+    header h1 { font-size: 24px; }
+    .tab-body { page-break-inside: avoid; }
+    ol.steps li { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="sub mono">Drawing No. 001 · Side Table · Softwood</div>
+    <h1>Bench&nbsp;Plans <span class="it">— a small table</span></h1>
+  </div>
+  <div class="meta mono">
+    <div>SCALE: free</div>
+    <div>UNITS: inches</div>
+    <div>BD/FT: <span id="bdft">–</span></div>
+  </div>
+</header>
+
+<div class="grid">
+  <!-- dimensions panel -->
+  <section class="panel body no-print">
+    <h2 class="panel-h">Dimensions</h2>
+    <div id="dim-rows"></div>
+    <div class="actions">
+      <button class="btn ghost" id="btn-reset">Reset</button>
+      <button class="btn" id="btn-print">Print page</button>
+    </div>
+    <div style="margin-top:14px; font-size:11px; opacity:0.65; font-style:italic; line-height:1.5;">
+      Tip: drag inside either 3D view to orbit. Scroll to zoom.
+      Use Print page (or Ctrl/Cmd+P) to save as PDF or print the whole plan
+      including the cut list and build steps.
+    </div>
+  </section>
+
+  <!-- viewers + tabs -->
+  <section>
+    <div class="viewers">
+      <div class="viewer">
+        <div class="viewer-h"><span><span class="num">01</span> · Assembled</span><span class="mono">w × d × h</span></div>
+        <div class="viewer-stage" id="stage-assembled">
+          <div class="dim-overlay"><svg id="dim-assembled" viewBox="0 0 100 100" preserveAspectRatio="none"></svg></div>
+          <div class="hint">drag · scroll</div>
+        </div>
+      </div>
+      <div class="viewer">
+        <div class="viewer-h"><span><span class="num">02</span> · Exploded</span><span class="mono">all parts</span></div>
+        <div class="viewer-stage" id="stage-exploded">
+          <div class="dim-overlay"><svg id="dim-exploded" viewBox="0 0 100 100" preserveAspectRatio="none"></svg></div>
+          <div class="hint">drag · scroll</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabs no-print">
+      <button class="tab active" data-tab="cut">01 · Cut list</button>
+      <button class="tab" data-tab="build">02 · Build plan</button>
+      <div class="tab-spacer"></div>
+      <button class="btn" id="btn-csv" style="margin-left:8px;">Export CSV</button>
+    </div>
+
+    <div class="tab-body" id="tab-content">
+      <!-- filled by JS -->
+    </div>
+
+    <p class="footer-note">
+      All dimensions in inches. Skirt lengths are the distance between the
+      legs. Always pre-drill before driving screws — softwood splits easily.
+    </p>
+  </section>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ─── plan state ────────────────────────────────────────────────
+const DEFAULTS = {
+  topW: 12, topD: 12, topT: 0.75,
+  topBoards: 4, topGap: 0,
+  height: 18,
+  legSize: 1.5,
+  apronH: 3, apronT: 0.75, apronInset: 0.5,
+};
+let plan = { ...DEFAULTS };
+let activeTab = 'cut';
+
+// ─── helpers ───────────────────────────────────────────────────
+const fmt = (n) => {
+  const whole = Math.floor(n);
+  const frac = n - whole;
+  const sixteenths = Math.round(frac * 16);
+  if (sixteenths === 0) return `${whole}"`;
+  if (sixteenths === 16) return `${whole + 1}"`;
+  let num = sixteenths, den = 16;
+  while (num % 2 === 0 && den % 2 === 0) { num /= 2; den /= 2; }
+  return whole > 0 ? `${whole} ${num}/${den}"` : `${num}/${den}"`;
+};
+
+function computeCutList(p) {
+  const legLen = p.height - p.topT;
+  const apronLong = p.topW - 2 * p.legSize;
+  const apronShort = p.topD - 2 * p.legSize;
+  const totalGap = (p.topBoards - 1) * p.topGap;
+  const boardW = (p.topW - totalGap) / p.topBoards;
+  return [
+    { part: "Top board", qty: p.topBoards, t: p.topT, w: boardW, l: p.topD,
+      material: "softwood plank (pine/SPF)",
+      note: p.topGap > 0 ? `${p.topGap}" gap between boards` : "boards sit side-by-side" },
+    { part: "Leg", qty: 4, t: p.legSize, w: p.legSize, l: legLen,
+      material: "softwood, square stock",
+      note: "pre-drill before any screws" },
+    { part: "Skirt (long side)", qty: 2, t: p.apronT, w: p.apronH, l: apronLong,
+      material: "softwood",
+      note: "fits between the legs" },
+    { part: "Skirt (short side)", qty: 2, t: p.apronT, w: p.apronH, l: apronShort,
+      material: "softwood",
+      note: "fits between the legs" },
+  ];
+}
+
+const STEPS = [
+  { t: "Check your stock", d: "Make sure each piece of wood is straight and not twisted. Pick the best-looking faces to be the outside of the table. Set aside any boards with big knots or splits for the underside." },
+  { t: "Cut to length", d: "Use the cut list. Crosscut all parts to size on the mitre saw. Cut one piece, check the length with a tape, then use a stop block so all matching pieces come out the same. Cut the legs in pairs so they're identical." },
+  { t: "Sand the parts", d: "Sand every face with 120 grit, then 150 grit. Easier to do this now than after the table is built. Knock the sharp corners off lightly so nothing splinters when handled." },
+  { t: "Mark the screw holes on the legs", d: "On each leg, measure down ½″ from the top — that's where the top of the skirt sits. Mark two screw locations on the inside faces (the two faces that will face the centre of the table), centred in the skirt thickness. Each leg gets four marks total: two on each of the two inside faces." },
+  { t: "Pre-drill the legs", d: "Pre-drilling stops the wood from splitting. Use a drill bit slightly smaller than your screw shaft. Drill all the way through where you marked. Tip: clamp a stop on the bit (or wrap tape around it) so you don't drill too deep." },
+  { t: "Build the two end frames", d: "Take two legs and one short skirt. Apply wood glue to the ends of the skirt where they touch the legs. Hold the skirt between the legs so its top is ½″ below the top of the legs, then drive screws through the pre-drilled holes into the skirt ends. Repeat with the other two legs and short skirt. You now have two end frames." },
+  { t: "Connect the ends with the long skirts", d: "Stand the two end frames up. Apply glue to the ends of both long skirts. Position them between the two end frames at the same height as the short skirts, and screw through the legs into the skirt ends. Check the table sits flat — if a leg is off the floor, loosen and re-seat before the glue sets." },
+  { t: "Let the glue dry", d: "Set the base aside for at least 30 minutes. An hour is better. Don't move it around while the glue is wet." },
+  { t: "Lay out the top boards", d: "Set your top boards across the skirt frame. Arrange them best-face-up. Slide them around until the overhang looks even on all four sides. If you want gaps between the boards, use a pencil or a coin as a spacer to keep gaps the same." },
+  { t: "Screw the top down", d: "From underneath, drill pilot holes up through the top of each skirt into the top boards — two screws per board per skirt is plenty. Use screws short enough that they don't poke through the top (measure: skirt thickness + about half the top thickness). Drive them in. The top is not glued — just screwed." },
+  { t: "Final sanding and finish (optional)", d: "Give the whole table a quick sand with 150 or 180 grit to even everything out. If you're applying a finish, polyurethane or oil both work on softwood. Two or three thin coats with a light sand between is better than one heavy coat." },
+];
+
+// ─── 3D scene factory ──────────────────────────────────────────
+function makeScene(mountEl, dimSvgEl, exploded) {
+  const w = mountEl.clientWidth, h = mountEl.clientHeight;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf4f1e8);
+
+  const camera = new THREE.PerspectiveCamera(35, w / h, 0.1, 200);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(w, h);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  mountEl.appendChild(renderer.domElement);
+
+  const amb = new THREE.AmbientLight(0xffffff, 0.55);
+  scene.add(amb);
+  const key = new THREE.DirectionalLight(0xffffff, 0.9);
+  key.position.set(20, 30, 18);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.left = -25; key.shadow.camera.right = 25;
+  key.shadow.camera.top = 25; key.shadow.camera.bottom = -25;
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.25);
+  fill.position.set(-15, 10, -10); scene.add(fill);
+
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(80, 80),
+    new THREE.MeshStandardMaterial({ color: 0xf4f1e8, roughness: 1 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  const grid = new THREE.GridHelper(80, 80, 0x3a6b9b, 0x3a6b9b);
+  grid.material.opacity = 0.18; grid.material.transparent = true;
+  grid.position.y = 0.001; scene.add(grid);
+
+  const tableGroup = new THREE.Group();
+  scene.add(tableGroup);
+
+  let theta = Math.PI * 0.25, phi = Math.PI * 0.35, dist = 38;
+  let dragging = false, lastX = 0, lastY = 0;
+  const setCam = () => {
+    camera.position.x = dist * Math.sin(phi) * Math.cos(theta);
+    camera.position.z = dist * Math.sin(phi) * Math.sin(theta);
+    camera.position.y = dist * Math.cos(phi);
+    camera.lookAt(0, 8, 0);
+  };
+  setCam();
+
+  const dom = renderer.domElement;
+  dom.addEventListener("mousedown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+  window.addEventListener("mouseup", () => { dragging = false; });
+  window.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    theta -= dx * 0.008;
+    phi = Math.max(0.15, Math.min(Math.PI / 2 - 0.05, phi - dy * 0.006));
+    setCam();
+  });
+  dom.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    dist = Math.max(15, Math.min(80, dist + e.deltaY * 0.04));
+    setCam();
+  }, { passive: false });
+  dom.addEventListener("touchstart", (e) => { if (e.touches[0]) { dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; } });
+  dom.addEventListener("touchmove", (e) => {
+    if (!dragging || !e.touches[0]) return;
+    const dx = e.touches[0].clientX - lastX, dy = e.touches[0].clientY - lastY;
+    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    theta -= dx * 0.008;
+    phi = Math.max(0.15, Math.min(Math.PI / 2 - 0.05, phi - dy * 0.006));
+    setCam();
+  });
+  dom.addEventListener("touchend", () => { dragging = false; });
+
+  const ro = new ResizeObserver(() => {
+    const W = mountEl.clientWidth, H = mountEl.clientHeight;
+    if (W && H) {
+      camera.aspect = W / H; camera.updateProjectionMatrix();
+      renderer.setSize(W, H);
+    }
+  });
+  ro.observe(mountEl);
+
+  function rebuild(p) {
+    while (tableGroup.children.length) {
+      const c = tableGroup.children.pop();
+      c.geometry?.dispose();
+      c.material?.dispose();
+    }
+
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0xd9b889, roughness: 0.75 });
+    const apronMat = new THREE.MeshStandardMaterial({ color: 0xc9a574, roughness: 0.78 });
+
+    const ex = exploded ? 1 : 0;
+    const legLen = p.height - p.topT;
+    const halfW = p.topW / 2, halfD = p.topD / 2;
+
+    const legGeo = new THREE.BoxGeometry(p.legSize, legLen, p.legSize);
+    const legPositions = [
+      [ halfW - p.legSize / 2, legLen / 2,  halfD - p.legSize / 2],
+      [-halfW + p.legSize / 2, legLen / 2,  halfD - p.legSize / 2],
+      [ halfW - p.legSize / 2, legLen / 2, -halfD + p.legSize / 2],
+      [-halfW + p.legSize / 2, legLen / 2, -halfD + p.legSize / 2],
+    ];
+    legPositions.forEach(([x, y, z]) => {
+      const m = new THREE.Mesh(legGeo, woodMat);
+      m.position.set(x + ex * 4 * Math.sign(x), y, z + ex * 4 * Math.sign(z));
+      m.castShadow = true; m.receiveShadow = true;
+      tableGroup.add(m);
+    });
+
+    const apronY = legLen - p.apronH / 2 - 0.25;
+    const apronInset = p.legSize / 2 + p.apronInset;
+
+    const longLen = p.topW - 2 * p.legSize;
+    const longGeo = new THREE.BoxGeometry(longLen, p.apronH, p.apronT);
+    [1, -1].forEach((sz) => {
+      const m = new THREE.Mesh(longGeo, apronMat);
+      m.position.set(0, apronY, sz * (halfD - apronInset) + ex * 3 * sz);
+      m.castShadow = true; m.receiveShadow = true;
+      tableGroup.add(m);
+    });
+
+    const shortLen = p.topD - 2 * p.legSize;
+    const shortGeo = new THREE.BoxGeometry(p.apronT, p.apronH, shortLen);
+    [1, -1].forEach((sx) => {
+      const m = new THREE.Mesh(shortGeo, apronMat);
+      m.position.set(sx * (halfW - apronInset) + ex * 3 * sx, apronY, 0);
+      m.castShadow = true; m.receiveShadow = true;
+      tableGroup.add(m);
+    });
+
+    const totalGap = (p.topBoards - 1) * p.topGap;
+    const boardW = (p.topW - totalGap) / p.topBoards;
+    const boardGeo = new THREE.BoxGeometry(boardW, p.topT, p.topD);
+    const tones = [0xe8cc9c, 0xd9b889, 0xe2c596, 0xceac7e, 0xeed0a0, 0xd4b285];
+    for (let i = 0; i < p.topBoards; i++) {
+      const mat = new THREE.MeshStandardMaterial({ color: tones[i % tones.length], roughness: 0.6 });
+      const m = new THREE.Mesh(boardGeo, mat);
+      const xLeft = -p.topW / 2 + boardW / 2;
+      const x = xLeft + i * (boardW + p.topGap);
+      const eY = ex * (4 + i * 0.4);
+      const eX = ex * (i - (p.topBoards - 1) / 2) * 0.6;
+      m.position.set(x + eX, legLen + p.topT / 2 + eY, 0);
+      m.castShadow = true; m.receiveShadow = true;
+      tableGroup.add(m);
+    }
+  }
+
+  // dimension overlay — projects 3D points to 2D and draws arrows
+  function project(v3) {
+    const v = v3.clone().project(camera);
+    const W = mountEl.clientWidth, H = mountEl.clientHeight;
+    return {
+      x: (v.x * 0.5 + 0.5) * W,
+      y: (-v.y * 0.5 + 0.5) * H,
+    };
+  }
+
+  function drawDimensions(p) {
+    if (!dimSvgEl) return;
+    const W = mountEl.clientWidth, H = mountEl.clientHeight;
+    dimSvgEl.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    dimSvgEl.innerHTML = "";
+
+    const NS = "http://www.w3.org/2000/svg";
+    const mk = (tag, attrs) => {
+      const el = document.createElementNS(NS, tag);
+      for (const k in attrs) el.setAttribute(k, attrs[k]);
+      return el;
+    };
+
+    const legLen = p.height - p.topT;
+    const halfW = p.topW / 2, halfD = p.topD / 2;
+    const topY = legLen + p.topT;
+
+    // Define dimension lines in 3D, then project
+    const dims = [];
+    if (!exploded) {
+      // width along top front
+      dims.push({
+        a: new THREE.Vector3(-halfW, topY + 0.1, halfD + 0.5),
+        b: new THREE.Vector3( halfW, topY + 0.1, halfD + 0.5),
+        label: fmt(p.topW), side: "top",
+      });
+      // depth along top right
+      dims.push({
+        a: new THREE.Vector3(halfW + 0.5, topY + 0.1, -halfD),
+        b: new THREE.Vector3(halfW + 0.5, topY + 0.1,  halfD),
+        label: fmt(p.topD), side: "top",
+      });
+      // height on right side
+      dims.push({
+        a: new THREE.Vector3(halfW + 1.5, 0, -halfD),
+        b: new THREE.Vector3(halfW + 1.5, p.height, -halfD),
+        label: fmt(p.height), side: "right",
+      });
+    } else {
+      // top thickness
+      dims.push({
+        a: new THREE.Vector3(halfW + 1, topY + 6, 0),
+        b: new THREE.Vector3(halfW + 1, topY + 6 - p.topT, 0),
+        label: fmt(p.topT) + " thick", side: "right",
+      });
+      // leg length
+      dims.push({
+        a: new THREE.Vector3(halfW + 4, 0, -halfD - 2),
+        b: new THREE.Vector3(halfW + 4, legLen, -halfD - 2),
+        label: fmt(legLen) + " leg", side: "right",
+      });
+      // leg cross-section (shown on the front-right leg, near its base)
+      const legX = halfW - p.legSize / 2 + 4;  // matches exploded leg position
+      const legZ = halfD - p.legSize / 2 + 4;
+      dims.push({
+        a: new THREE.Vector3(legX - p.legSize / 2, -0.5, legZ),
+        b: new THREE.Vector3(legX + p.legSize / 2, -0.5, legZ),
+        label: fmt(p.legSize) + " × " + fmt(p.legSize), side: "front",
+      });
+      // apron height
+      const apY = legLen - p.apronH / 2 - 0.25;
+      dims.push({
+        a: new THREE.Vector3(0, apY - p.apronH / 2, halfD + 4),
+        b: new THREE.Vector3(0, apY + p.apronH / 2, halfD + 4),
+        label: fmt(p.apronH) + " apron", side: "front",
+      });
+      // apron length (long side) — drawn along the exploded long apron on +Z side
+      const longLen = p.topW - 2 * p.legSize;
+      const apronInset = p.legSize / 2 + p.apronInset;
+      const longApronZ = halfD - apronInset + 3;  // matches exploded position
+      dims.push({
+        a: new THREE.Vector3(-longLen / 2, apY + p.apronH / 2 + 1, longApronZ),
+        b: new THREE.Vector3( longLen / 2, apY + p.apronH / 2 + 1, longApronZ),
+        label: fmt(longLen) + " skirt", side: "front",
+      });
+    }
+
+    dims.forEach(d => {
+      const A = project(d.a), B = project(d.b);
+      const tip = 6;
+      const line = mk("line", {
+        x1: A.x, y1: A.y, x2: B.x, y2: B.y,
+        stroke: "#1e4d7b", "stroke-width": 1.2,
+      });
+      dimSvgEl.appendChild(line);
+      // tick marks
+      [A, B].forEach(P => {
+        dimSvgEl.appendChild(mk("circle", {
+          cx: P.x, cy: P.y, r: 2, fill: "#1e4d7b",
+        }));
+      });
+      // label
+      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+      const labelW = Math.max(40, d.label.length * 6.5 + 10);
+      const bg = mk("rect", {
+        x: mx - labelW / 2, y: my - 9, width: labelW, height: 16,
+        fill: "#f4f1e8", stroke: "#1e4d7b", "stroke-width": 0.8,
+      });
+      dimSvgEl.appendChild(bg);
+      const txt = mk("text", {
+        x: mx, y: my + 4, "text-anchor": "middle",
+        "font-family": "JetBrains Mono, monospace",
+        "font-size": 11, fill: "#1e4d7b", "font-weight": 600,
+      });
+      txt.textContent = d.label;
+      dimSvgEl.appendChild(txt);
+    });
+  }
+
+  let raf;
+  const tick = () => {
+    renderer.render(scene, camera);
+    drawDimensions(plan);
+    raf = requestAnimationFrame(tick);
+  };
+  tick();
+
+  return { rebuild };
+}
+
+// ─── UI build ──────────────────────────────────────────────────
+const ROWS = [
+  { key: "topW",      label: "Top width",      step: 0.25,  min: 4,    max: 60,  unit: "in" },
+  { key: "topD",      label: "Top depth",      step: 0.25,  min: 4,    max: 60,  unit: "in" },
+  { key: "topT",      label: "Top thickness",  step: 0.125, min: 0.5,  max: 2,   unit: "in" },
+  { key: "topBoards", label: "Top boards",     step: 1,     min: 1,    max: 12,  unit: "qty" },
+  { key: "topGap",    label: "Board gap",      step: 0.0625,min: 0,    max: 0.5, unit: "in" },
+  { key: "height",    label: "Total height",   step: 0.5,   min: 6,    max: 48,  unit: "in" },
+  { key: "legSize",   label: "Leg size",       step: 0.125, min: 0.75, max: 4,   unit: "in" },
+  { key: "apronH",    label: "Apron height",   step: 0.25,  min: 1,    max: 6,   unit: "in" },
+  { key: "apronT",    label: "Apron thick.",   step: 0.125, min: 0.5,  max: 1.5, unit: "in" },
+];
+
+const dimRowsEl = document.getElementById("dim-rows");
+ROWS.forEach(r => {
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML = `
+    <label>${r.label}</label>
+    <div class="controls">
+      <button class="btn-sm" data-act="dec" data-key="${r.key}">−</button>
+      <input type="number" id="in-${r.key}" step="${r.step}" min="${r.min}" max="${r.max}" />
+      <button class="btn-sm" data-act="inc" data-key="${r.key}">+</button>
+      <span class="unit">${r.unit}</span>
+    </div>
+  `;
+  dimRowsEl.appendChild(row);
+});
+
+function syncInputs() {
+  ROWS.forEach(r => {
+    const el = document.getElementById(`in-${r.key}`);
+    if (el && document.activeElement !== el) el.value = plan[r.key];
+  });
+}
+
+dimRowsEl.addEventListener("click", (e) => {
+  const t = e.target;
+  if (!t.dataset.act) return;
+  const r = ROWS.find(x => x.key === t.dataset.key);
+  const cur = plan[r.key];
+  const nxt = t.dataset.act === "inc"
+    ? Math.min(r.max, +(cur + r.step).toFixed(4))
+    : Math.max(r.min, +(cur - r.step).toFixed(4));
+  plan[r.key] = nxt;
+  refresh();
+});
+dimRowsEl.addEventListener("input", (e) => {
+  const id = e.target.id;
+  if (!id?.startsWith("in-")) return;
+  const key = id.slice(3);
+  const v = parseFloat(e.target.value);
+  if (!isNaN(v)) {
+    const r = ROWS.find(x => x.key === key);
+    plan[key] = Math.max(r.min, Math.min(r.max, v));
+    refresh(false);
+  }
+});
+
+document.getElementById("btn-reset").addEventListener("click", () => {
+  plan = { ...DEFAULTS };
+  refresh();
+});
+document.getElementById("btn-print").addEventListener("click", () => window.print());
+document.getElementById("btn-csv").addEventListener("click", () => {
+  const cuts = computeCutList(plan);
+  const rows = [["Part", "Qty", "Thickness (in)", "Width (in)", "Length (in)", "Material", "Note"]];
+  cuts.forEach(c => rows.push([c.part, c.qty, c.t, c.w, c.l, c.material, c.note]));
+  const csv = rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "cut-list.csv"; a.click();
+  URL.revokeObjectURL(url);
+});
+
+// tab switching
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    activeTab = btn.dataset.tab;
+    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b === btn));
+    renderTabBody();
+  });
+});
+
+function renderTabBody() {
+  const el = document.getElementById("tab-content");
+  if (activeTab === "cut") {
+    const cuts = computeCutList(plan);
+    el.innerHTML = `
+      <div style="overflow-x:auto;">
+        <table class="cuts">
+          <thead><tr>
+            <th>#</th><th>Part</th><th>Qty</th><th>T</th><th>W</th><th>L</th><th>Material</th><th>Notes</th>
+          </tr></thead>
+          <tbody>
+            ${cuts.map((c, i) => `
+              <tr>
+                <td class="num">${String(i+1).padStart(2,"0")}</td>
+                <td class="serif">${c.part}</td>
+                <td class="num">×${c.qty}</td>
+                <td class="num">${fmt(c.t)}</td>
+                <td class="num">${fmt(c.w)}</td>
+                <td class="num">${fmt(c.l)}</td>
+                <td>${c.material}</td>
+                <td class="note">${c.note}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } else {
+    el.innerHTML = `<ol class="steps">${
+      STEPS.map((s, i) => `
+        <li>
+          <div class="n">${String(i+1).padStart(2,"0")}</div>
+          <div>
+            <div class="t">${s.t}</div>
+            <div class="d">${s.d}</div>
+          </div>
+        </li>
+      `).join("")
+    }</ol>`;
+  }
+}
+
+function updateBdft() {
+  const cuts = computeCutList(plan);
+  const total = cuts.reduce((s, c) => s + (c.t * c.w * c.l * c.qty) / 144, 0);
+  document.getElementById("bdft").textContent = total.toFixed(2);
+}
+
+// ─── boot ──────────────────────────────────────────────────────
+const sceneAssembled = makeScene(
+  document.getElementById("stage-assembled"),
+  document.getElementById("dim-assembled"),
+  false
+);
+const sceneExploded = makeScene(
+  document.getElementById("stage-exploded"),
+  document.getElementById("dim-exploded"),
+  true
+);
+
+function refresh(syncUI = true) {
+  if (syncUI) syncInputs();
+  sceneAssembled.rebuild(plan);
+  sceneExploded.rebuild(plan);
+  updateBdft();
+  renderTabBody();
+}
+refresh();
+</script>
+</body>
+</html>
