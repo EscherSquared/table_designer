@@ -3,7 +3,7 @@
 Interactive 3D table designer with cut list and build plan for a Grade 9
 woodworking project.
 
-**Live version:** https://EscherSquared.github.io/table-designer/
+**Live version:** https://EscherSquared.github.io/table_designer/
 
 ## What it does
 
